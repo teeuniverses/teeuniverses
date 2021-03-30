@@ -44,6 +44,7 @@ public:
 	{
 		MAPFORMAT_TW=0,
 		MAPFORMAT_DDNET,
+		MAPFORMAT_INFCLASS,
 		MAPFORMAT_OPENFNG,
 		MAPFORMAT_NINSLASH,
 		MAPFORMAT_DUMMYCAPTURE,
@@ -78,6 +79,14 @@ public:
 	CAssetPath m_Path_ZoneType_DDTele;
 	CAssetPath m_Path_ZoneType_DDSwitch;
 	CAssetPath m_Path_ZoneType_DDTune;
+
+	int m_PackageId_UnivInfClass;
+	CAssetPath m_Path_ZoneType_icDamage;
+	CAssetPath m_Path_ZoneType_icBonus;
+	CAssetPath m_Path_ZoneType_icTele;
+	CAssetPath m_Path_EntityType_icHuman;
+	CAssetPath m_Path_EntityType_icInfected;
+	CAssetPath m_Path_EntityType_icHeroFlag;
 	
 	int m_PackageId_UnivOpenFNG;
 	CAssetPath m_Path_ZoneType_OpenFNG;
@@ -156,6 +165,9 @@ public:
 	CAssetPath m_Path_Image_WinterMountains1;
 	CAssetPath m_Path_Image_WinterMountains2;
 	CAssetPath m_Path_Image_WinterMountains3;
+
+	int m_PackageId_EnvInfClass;
+	CAssetPath m_Path_Image_InfClass;
 	
 	int m_PackageId_EnvLab;
 	CAssetPath m_Path_Image_LabMisc;
@@ -239,6 +251,7 @@ public:
 	
 	void Load_UnivTeeWorlds();
 	void Load_UnivDDNet();
+	void Load_InfClass();
 	void Load_UnivOpenFNG();
 	void Load_UnivNinslash();
 	void Load_UnivSport();
@@ -254,6 +267,7 @@ public:
 	void Load_EnvStars();
 	void Load_EnvSun();
 	void Load_EnvWinter();
+	void Load_EnvInfclass();
 	void Load_EnvLab();
 	void Load_EnvFactory();
 	
@@ -400,16 +414,12 @@ public:
 		#define MACRO_ASSETTYPE(Name) case CAsset_##Name::TypeId:\
 		{\
 			CAsset_##Name* pAsset = GetAsset_Hard<CAsset_##Name>(AssetPath);\
-			if(pAsset)\
-			{\
-				if(pAsset->SetValue<T>(FieldType, SubPath, Value))\
+			if(pAsset && (pAsset->SetValue<T>(FieldType, SubPath, Value)))\
 				{\
 					m_pPackages[AssetPath.GetPackageId()]->SetEdited(true);\
 					return true;\
 				}\
-			}\
-			else\
-				return false;\
+			return false;\
 		}
 		
 		switch(AssetPath.GetType())
@@ -474,6 +484,10 @@ public:
 	void Undo();
 	int GenerateToken();
 	int GetHistorySize();
+
+protected:
+	void SaveMapImages(ddnet::CDataFileWriter *pArchiveFile, int Format, const std::vector<CAssetPath> &Animations);
+	void SaveMapAnimations(ddnet::CDataFileWriter *pArchiveFile, const std::vector<CAssetPath> &Animations);
 };
 
 #endif

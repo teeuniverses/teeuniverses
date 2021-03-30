@@ -21,9 +21,15 @@
 #include <client/components/input.h>
 
 #include "text-edit.h"
-	
+
+#include <algorithm>
+
 namespace gui
 {
+
+static const std::vector<char> TextSeparators = {
+    '-', '_', '.', ',',
+};
 
 /* ABSTRACT TEXT EDIT *************************************************/
 
@@ -91,7 +97,24 @@ bool CAbstractTextEdit::LineInput(CInput::CEvent Event, dynamic_string& String, 
 			}
 			else if(CursorPos > 0)
 			{
-				StartCharPos = str_utf8_rewind(String.buffer(), CursorPos);
+				if(Input()->KeyIsPressed(KEY_LCTRL))
+				{
+					StartCharPos = CursorPos;
+					while (StartCharPos > 0)
+					{
+						StartCharPos = str_utf8_rewind(String.buffer(), StartCharPos);
+						char c = String.buffer()[StartCharPos];
+						auto iterator = std::find(std::begin(TextSeparators), std::end(TextSeparators), c);
+						if(iterator != TextSeparators.end())
+						{
+							break;
+						}
+					}
+				}
+				else
+				{
+					StartCharPos = str_utf8_rewind(String.buffer(), CursorPos);
+				}
 				EndCharPos = CursorPos;
 			}
 			
@@ -140,7 +163,7 @@ bool CAbstractTextEdit::LineInput(CInput::CEvent Event, dynamic_string& String, 
 		else if(Key == KEY_LEFT)
 		{
 			if(m_TextSelection0.m_TextIter >= 0 && m_TextSelection1.m_TextIter >= 0 && m_TextSelection0.m_TextIter != m_TextSelection1.m_TextIter)
-				CursorPos = ((m_TextSelection0.m_Position < m_TextSelection1.m_Position) ? m_TextSelection0.m_TextIter : m_TextSelection1.m_TextIter);
+				CursorPos = ((m_TextSelection0.m_TextIter < m_TextSelection1.m_TextIter) ? m_TextSelection0.m_TextIter : m_TextSelection1.m_TextIter);
 			else if(CursorPos > 0)
 				CursorPos = str_utf8_rewind(String.buffer(), CursorPos);
 				
@@ -149,7 +172,7 @@ bool CAbstractTextEdit::LineInput(CInput::CEvent Event, dynamic_string& String, 
 		else if(Key == KEY_RIGHT)
 		{
 			if(m_TextSelection0.m_TextIter >= 0 && m_TextSelection1.m_TextIter >= 0 && m_TextSelection0.m_TextIter != m_TextSelection1.m_TextIter)
-				CursorPos = ((m_TextSelection0.m_Position < m_TextSelection1.m_Position) ? m_TextSelection1.m_TextIter : m_TextSelection0.m_TextIter);
+				CursorPos = ((m_TextSelection0.m_TextIter < m_TextSelection1.m_TextIter) ? m_TextSelection1.m_TextIter : m_TextSelection0.m_TextIter);
 			else if(CursorPos < Length)
 				CursorPos = str_utf8_forward(String.buffer(), CursorPos);
 				
@@ -180,6 +203,7 @@ bool CAbstractTextEdit::LineInput(CInput::CEvent Event, dynamic_string& String, 
 						for(int c=EndCharPos; String.buffer()[c]; c++)
 							String.buffer()[c-CharSize] = String.buffer()[c];
 						String.buffer()[Length-CharSize] = 0;
+						CursorPos = StartCharPos;
 					}
 				}
 				

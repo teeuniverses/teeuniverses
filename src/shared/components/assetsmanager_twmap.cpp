@@ -186,6 +186,8 @@ int CAssetsManager::Load_Map(const char* pFileName, int StorageType, int Format)
 		Load_UnivSport();
 	if(Format == MAPFORMAT_FOOT)
 		Load_UnivSport();
+	if(Format == MAPFORMAT_INFCLASS)
+		Load_InfClass();
 	
 	char aBuf[128];
 
@@ -383,6 +385,24 @@ int CAssetsManager::Load_Map(const char* pFileName, int StorageType, int Format)
 			}
 			else
 			{
+				if(Format == MAPFORMAT_INFCLASS)
+				{
+					char *pName = (char *)ArchiveFile.GetData(pItem->m_ImageName);
+
+					bool ImageLoaded = false;
+					if(str_comp(pName, "infclass") == 0)
+					{
+						Load_EnvInfclass();
+						pImagePath[i] = m_Path_Image_InfClass;
+						ImageLoaded = true;
+					}
+
+					ArchiveFile.UnloadData(pItem->m_ImageName);
+
+					if(ImageLoaded)
+						continue;
+				}
+
 				CAsset_Image* pImage = NewAsset_Hard<CAsset_Image>(pImagePath+i, PackageId);
 				
 				//Image name
@@ -1424,7 +1444,7 @@ int CAssetsManager::Load_Map(const char* pFileName, int StorageType, int Format)
 								
 								SetAssetValue_Hard<int>(pImagePath[pTilemapItem->m_Image], CSubPath::Null(), CAsset_Image::GRIDWIDTH, 16);
 								SetAssetValue_Hard<int>(pImagePath[pTilemapItem->m_Image], CSubPath::Null(), CAsset_Image::GRIDHEIGHT, 16);
-								SetAssetValue_Hard<int>(pImagePath[pTilemapItem->m_Image], CSubPath::Null(), CAsset_Image::GRIDSPACING, 2);
+								SetAssetValue_Hard<int>(pImagePath[pTilemapItem->m_Image], CSubPath::Null(), CAsset_Image::GRIDSPACING, 0);
 								SetAssetValue_Hard<bool>(pImagePath[pTilemapItem->m_Image], CSubPath::Null(), CAsset_Image::TILINGENABLED, true);
 							}
 							
@@ -2035,10 +2055,10 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 	//Map info
 	ddnet::CMapItemInfo InfoItem;
 	InfoItem.m_Version = 1;
-	InfoItem.m_MapVersion = ArchiveFile.AddData(str_length(GetPackageVersion(PackageId))+1, (char*) GetPackageVersion(PackageId));
-	InfoItem.m_Author = ArchiveFile.AddData(str_length(GetPackageAuthor(PackageId))+1, (char*) GetPackageAuthor(PackageId));
-	InfoItem.m_Credits = ArchiveFile.AddData(str_length(GetPackageCredits(PackageId))+1, (char*) GetPackageCredits(PackageId));
-	InfoItem.m_License = ArchiveFile.AddData(str_length(GetPackageLicense(PackageId))+1, (char*) GetPackageLicense(PackageId));
+	InfoItem.m_MapVersion = ArchiveFile.AddData(str_length(GetPackageVersion(PackageId))+1, GetPackageVersion(PackageId));
+	InfoItem.m_Author = ArchiveFile.AddData(str_length(GetPackageAuthor(PackageId))+1, GetPackageAuthor(PackageId));
+	InfoItem.m_Credits = ArchiveFile.AddData(str_length(GetPackageCredits(PackageId))+1, GetPackageCredits(PackageId));
+	InfoItem.m_License = ArchiveFile.AddData(str_length(GetPackageLicense(PackageId))+1, GetPackageLicense(PackageId));
 	ArchiveFile.AddItem(ddnet::MAPITEMTYPE_INFO, 0, sizeof(ddnet::CMapItemInfo), &InfoItem);
 	
 	int GroupId = 0;
@@ -2320,7 +2340,7 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 							}
 						}
 					}
-					else if(Format == MAPFORMAT_DDNET && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDGame)
+					else if(m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDGame)
 					{
 						for(int j=0; j<pZone->GetTileHeight(); j++)
 						{
@@ -2335,7 +2355,7 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 							}
 						}
 					}
-					else if(Format == MAPFORMAT_DDNET && pFrontTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDFront)
+					else if(pFrontTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDFront)
 					{
 						for(int j=0; j<pZone->GetTileHeight(); j++)
 						{
@@ -2350,7 +2370,7 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 							}
 						}
 					}
-					else if(Format == MAPFORMAT_DDNET && pTeleTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDTele)
+					else if(pTeleTiles && pZone->GetZoneTypePath() == m_Path_ZoneType_DDTele)
 					{
 						const array2d<int>& DataInt = pZone->GetDataIntArray();
 						for(int j=0; j<pZone->GetTileHeight(); j++)
@@ -2370,7 +2390,7 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 							}
 						}
 					}
-					else if(Format == MAPFORMAT_DDNET && pSwitchTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDSwitch)
+					else if(pSwitchTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDSwitch)
 					{
 						const array2d<int>& DataInt = pZone->GetDataIntArray();
 						for(int j=0; j<pZone->GetTileHeight(); j++)
@@ -2392,7 +2412,7 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 							}
 						}
 					}
-					else if(Format == MAPFORMAT_DDNET && pTuneTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDTune)
+					else if(pTuneTiles && m_PackageId_UnivDDNet >= 0 && pZone->GetZoneTypePath() == m_Path_ZoneType_DDTune)
 					{
 						const array2d<int>& DataInt = pZone->GetDataIntArray();
 						for(int j=0; j<pZone->GetTileHeight(); j++)
@@ -3036,593 +3056,597 @@ bool CAssetsManager::Save_Map(const char* pFileName, int StorageType, int Packag
 	}
 	
 	//Step6: Save images
-	{
-		for(unsigned int i=0; i<Images.size(); i++)
-		{
-			ddnet::CMapItemImage IItem;
-			IItem.m_Version = 1;
-			IItem.m_Width = 0;
-			IItem.m_Height = 0;
-			IItem.m_External = 1;
-			IItem.m_ImageName = -1;
-			IItem.m_ImageData = -1;
-			
-			const CAsset_Image* pImage = GetAsset<CAsset_Image>(Images[i]);
-			if(pImage)
-			{
-				IItem.m_Width = pImage->GetDataWidth();
-				IItem.m_Height = pImage->GetDataHeight();
-				
-				if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_clouds") == 0)
-				{
-					if(str_comp(pImage->GetName(), "cloud1") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("bg_cloud1")+1, (char*) "bg_cloud1");
-					if(str_comp(pImage->GetName(), "cloud2") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("bg_cloud2")+1, (char*) "bg_cloud2");
-					if(str_comp(pImage->GetName(), "cloud3") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("bg_cloud3")+1, (char*) "bg_cloud3");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_desert") == 0)
-				{
-					if(str_comp(pImage->GetName(), "desertMain") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("desert_main")+1, (char*) "desert_main");
-					if(str_comp(pImage->GetName(), "desertDoodads") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("desert_doodads")+1, (char*) "desert_doodads");
-					if(str_comp(pImage->GetName(), "desertMountains1") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("desert_mountains")+1, (char*) "desert_mountains");
-					if(str_comp(pImage->GetName(), "desertMountains2") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("desert_mountains2")+1, (char*) "desert_mountains2");
-					if(str_comp(pImage->GetName(), "desertSun") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("desert_sun")+1, (char*) "desert_sun");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_generic") == 0)
-				{
-					if(str_comp(pImage->GetName(), "genericSpikes") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("generic_deathtiles")+1, (char*) "generic_deathtiles");
-					if(str_comp(pImage->GetName(), "genericUnhookable") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("generic_unhookable")+1, (char*) "generic_unhookable");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_grass") == 0)
-				{
-					if(str_comp(pImage->GetName(), "grassMain") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("grass_main")+1, (char*) "grass_main");
-					if(str_comp(pImage->GetName(), "grassDoodads") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("grass_doodads")+1, (char*) "grass_doodads");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_jungle") == 0)
-				{
-					if(str_comp(pImage->GetName(), "jungleMain") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("jungle_main")+1, (char*) "jungle_main");
-					if(str_comp(pImage->GetName(), "jungleDoodads") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("jungle_doodads")+1, (char*) "jungle_doodads");
-					if(str_comp(pImage->GetName(), "jungleSpikes") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("jungle_deathtiles")+1, (char*) "jungle_deathtiles");
-					if(str_comp(pImage->GetName(), "jungleUnhookable") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("jungle_unhookables")+1, (char*) "jungle_unhookables");
-					if(str_comp(pImage->GetName(), "jungleBackground") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("jungle_background")+1, (char*) "jungle_background");
-					if(str_comp(pImage->GetName(), "jungleMidground") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("jungle_midground")+1, (char*) "jungle_midground");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_moon") == 0)
-				{
-					if(str_comp(pImage->GetName(), "moon") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("moon")+1, (char*) "moon");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_mountains") == 0)
-				{
-					if(str_comp(pImage->GetName(), "mountains") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("mountains")+1, (char*) "mountains");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_snow") == 0)
-				{
-					if(str_comp(pImage->GetName(), "snow") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("snow")+1, (char*) "snow");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_stars") == 0)
-				{
-					if(str_comp(pImage->GetName(), "stars") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("stars")+1, (char*) "stars");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_sun") == 0)
-				{
-					if(str_comp(pImage->GetName(), "sun") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("sun")+1, (char*) "sun");
-				}
-				else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_winter") == 0)
-				{
-					if(str_comp(pImage->GetName(), "winterMain") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("winter_main")+1, (char*) "winter_main");
-					if(str_comp(pImage->GetName(), "winterDoodads") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("winter_doodads")+1, (char*) "winter_doodads");
-					if(str_comp(pImage->GetName(), "winterMountains1") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("winter_mountains")+1, (char*) "winter_mountains");
-					if(str_comp(pImage->GetName(), "winterMountains2") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("winter_mountains2")+1, (char*) "winter_mountains2");
-					if(str_comp(pImage->GetName(), "winterMountains3") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("winter_mountains3")+1, (char*) "winter_mountains3");
-				}
-				else if(Format == MAPFORMAT_NINSLASH && str_comp(GetPackageName(Images[i].GetPackageId()), "env_lab") == 0)
-				{
-					if(str_comp(pImage->GetName(), "labMain") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("lab_main")+1, (char*) "lab_main");
-					if(str_comp(pImage->GetName(), "labMisc") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("lab")+1, (char*) "lab");
-					if(str_comp(pImage->GetName(), "labBackground") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("lab_background")+1, (char*) "lab_background");
-				}
-				else if(Format == MAPFORMAT_NINSLASH && str_comp(GetPackageName(Images[i].GetPackageId()), "env_factory") == 0)
-				{
-					if(str_comp(pImage->GetName(), "factoryMain") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("factory_main")+1, (char*) "factory_main");
-					if(str_comp(pImage->GetName(), "factoryBackground") == 0)
-						IItem.m_ImageName = ArchiveFile.AddData(str_length("factory_background")+1, (char*) "factory_background");
-				}
-				
-				if(IItem.m_ImageName == -1)
-				{
-					IItem.m_External = 0;
-					IItem.m_ImageName = ArchiveFile.AddData(str_length(pImage->GetName())+1, (char*) pImage->GetName());
-					IItem.m_ImageData = ArchiveFile.AddData(pImage->GetDataArray().get_linear_size(), (char*) pImage->GetDataPtr());
-				}
-			}
-			
-			ArchiveFile.AddItem(ddnet::MAPITEMTYPE_IMAGE, i, sizeof(IItem), &IItem);
-		}
-	}
-	
+	SaveMapImages(&ArchiveFile, Format, Images);
 	//Step7: Save animations
-	{
-		std::vector<ddnet::CEnvPoint> Points;
-		for(unsigned int i=0; i<Animations.size(); i++)
-		{
-			const CAsset_SkeletonAnimation* pAnimation = GetAsset<CAsset_SkeletonAnimation>(Animations[i]);
-			
-			//Save position env
-			{
-				unsigned int OldNumPoints = Points.size();
-				
-				CSubPath GlobalBone = pAnimation->FindBoneAnim(CSubPath::Null());
-			
-				if(GlobalBone.IsNotNull() && pAnimation->IsValidBoneAnimation(GlobalBone))
-				{
-					bool Loop = (pAnimation->GetBoneAnimationCycleType(GlobalBone) == CAsset_SkeletonAnimation::CYCLETYPE_LOOP);
-					
-					const std::vector<CAsset_SkeletonAnimation::CBoneAnimation::CKeyFrame>& KeyFrames = pAnimation->GetBoneAnimationKeyFrameArray(GlobalBone);
-					
-					if(!KeyFrames.size())
-					{
-						Points.emplace_back();
-						Points.back().m_Time = 0;
-						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-						Points.back().m_aValues[0] = f2fx(0.0f);
-						Points.back().m_aValues[1] = f2fx(0.0f);
-						Points.back().m_aValues[2] = f2fx(0.0f);
-						Points.back().m_aValues[3] = f2fx(0.0f);
-						
-						Points.emplace_back();
-						Points.back().m_Time = 1000;
-						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-						Points.back().m_aValues[0] = f2fx(0.0f);
-						Points.back().m_aValues[1] = f2fx(0.0f);
-						Points.back().m_aValues[2] = f2fx(0.0f);
-						Points.back().m_aValues[3] = f2fx(0.0f);
-					}
-					else if(KeyFrames[0].GetTime() != 0)
-					{
-						if(Loop)
-						{
-							if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
-							{
-								Points.emplace_back();
-								Points.back().m_Time = 0;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetTranslation().x);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetTranslation().y);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetAngle()*180.0f/Pi);
-								Points.back().m_aValues[3] = f2fx(0.0f);
-							}
-							else if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
-							{
-								Points.emplace_back();
-								Points.back().m_Time = 0;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetTranslation().x);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetTranslation().y);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetAngle());
-								Points.back().m_aValues[3] = f2fx(0.0f);
-								
-								Points.emplace_back();
-								Points.back().m_Time = KeyFrames.front().GetTime()/2;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetTranslation().x);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetTranslation().y);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetAngle()*180.0f/Pi);
-								Points.back().m_aValues[3] = f2fx(0.0f);
-							}
-							else
-							{
-								Points.emplace_back();
-								Points.back().m_Time = 0;
-								switch(KeyFrames.back().GetGraphType())
-								{
-									case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
-										break;
-								}
-								Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetTranslation().x);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetTranslation().y);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetAngle()*180.0f/Pi);
-								Points.back().m_aValues[3] = f2fx(0.0f);
-							}
-						}
-						else
-						{
-							Points.emplace_back();
-							Points.back().m_Time = 0;
-							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-							Points.back().m_aValues[0] = f2fx(KeyFrames[0].GetTranslation().x);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[0].GetTranslation().y);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[0].GetAngle()*180.0f/Pi);
-							Points.back().m_aValues[3] = f2fx(0.0f);
-						}
-					}
-					
-					for(unsigned int f=0; f<KeyFrames.size(); f++)
-					{
-						if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
-						{
-							Points.emplace_back();
-							Points.back().m_Time = KeyFrames[f].GetTime();
-							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-							Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetTranslation().x);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetTranslation().y);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetAngle());
-							Points.back().m_aValues[3] = f2fx(0.0f);
-							Points.emplace_back();
-							if(f+1 < KeyFrames.size() || Loop)
-							{
-								unsigned int f2 = (f+1)%KeyFrames.size();
-								Points.back().m_Time = KeyFrames[f].GetTime();
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetTranslation().x);
-								Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetTranslation().y);
-								Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetAngle()*180.0f/Pi);
-								Points.back().m_aValues[3] = f2fx(0.0f);
-							}
-						}
-						else if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
-						{
-							Points.emplace_back();
-							Points.back().m_Time = KeyFrames[f].GetTime();
-							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-							Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetTranslation().x);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetTranslation().y);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetAngle());
-							Points.back().m_aValues[3] = f2fx(0.0f);
-							Points.emplace_back();
-							if(f+1 < KeyFrames.size() || Loop)
-							{
-								unsigned int f2 = (f+1)%KeyFrames.size();
-								int64 Time2 = KeyFrames[f2].GetTime();
-								if(Time2 < KeyFrames[f].GetTime())
-									Time2 += pAnimation->GetBoneAnimation(GlobalBone).GetDuration();
-								Points.back().m_Time = (KeyFrames[f].GetTime() + Time2)/2;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetTranslation().x);
-								Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetTranslation().y);
-								Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetAngle()*180.0f/Pi);
-								Points.back().m_aValues[3] = f2fx(0.0f);
-							}
-						}
-						else
-						{
-							Points.emplace_back();
-							Points.back().m_Time = KeyFrames[f].GetTime();
-							switch(KeyFrames[f].GetGraphType())
-							{
-								case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
-									break;
-							}
-							Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetTranslation().x);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetTranslation().y);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetAngle()*180.0f/Pi);
-							Points.back().m_aValues[3] = f2fx(0.0f);
-						}
-					}
-					
-					//copy the last frame to simulate a clamping
-					if(KeyFrames.size() && !Loop)
-					{
-						Points.emplace_back();
-						Points.back().m_Time = 0x7FFFFFFF;
-						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-						Points.back().m_aValues[0] = f2fx(KeyFrames[KeyFrames.size()-1].GetTranslation().x);
-						Points.back().m_aValues[1] = f2fx(KeyFrames[KeyFrames.size()-1].GetTranslation().y);
-						Points.back().m_aValues[2] = f2fx(KeyFrames[KeyFrames.size()-1].GetAngle()*180.0f/Pi);
-						Points.back().m_aValues[3] = f2fx(0.0f);
-					}
-				}
-				else
-				{
-					Points.emplace_back();
-					Points.back().m_Time = 0;
-					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-					Points.back().m_aValues[0] = f2fx(0.0f);
-					Points.back().m_aValues[1] = f2fx(0.0f);
-					Points.back().m_aValues[2] = f2fx(0.0f);
-					Points.back().m_aValues[3] = f2fx(0.0f);
-					
-					Points.emplace_back();
-					Points.back().m_Time = 1000;
-					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-					Points.back().m_aValues[0] = f2fx(0.0f);
-					Points.back().m_aValues[1] = f2fx(0.0f);
-					Points.back().m_aValues[2] = f2fx(0.0f);
-					Points.back().m_aValues[3] = f2fx(0.0f);
-				}
-			
-				ddnet::CMapItemEnvelope AItem;
-				AItem.m_Version = ddnet::CMapItemEnvelope::CURRENT_VERSION;
-				AItem.m_Channels = 3;
-				AItem.m_StartPoint = OldNumPoints;
-				AItem.m_NumPoints = Points.size() - OldNumPoints;
-				AItem.m_Synchronized = 1;
-				StrToInts(AItem.m_aName, sizeof(AItem.m_aName)/sizeof(int), pAnimation->GetName());
-				ArchiveFile.AddItem(ddnet::MAPITEMTYPE_ENVELOPE, i*2, sizeof(ddnet::CMapItemEnvelope), &AItem);
-			}
-			
-			//Save color env
-			{
-				unsigned int OldNumPoints = Points.size();
-				
-				CSubPath GlobalLayer = pAnimation->FindLayerAnim(CSubPath::Null());
-			
-				if(GlobalLayer.IsNotNull() && pAnimation->IsValidLayerAnimation(GlobalLayer))
-				{
-					bool Loop = (pAnimation->GetLayerAnimationCycleType(GlobalLayer) == CAsset_SkeletonAnimation::CYCLETYPE_LOOP);
-					
-					const std::vector<CAsset_SkeletonAnimation::CLayerAnimation::CKeyFrame>& KeyFrames = pAnimation->GetLayerAnimationKeyFrameArray(GlobalLayer);
-					
-					if(!KeyFrames.size())
-					{
-						Points.emplace_back();
-						Points.back().m_Time = 0;
-						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-						Points.back().m_aValues[0] = f2fx(1.0f);
-						Points.back().m_aValues[1] = f2fx(1.0f);
-						Points.back().m_aValues[2] = f2fx(1.0f);
-						Points.back().m_aValues[3] = f2fx(1.0f);
-						Points.emplace_back();
-						Points.back().m_Time = 1000;
-						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-						Points.back().m_aValues[0] = f2fx(1.0f);
-						Points.back().m_aValues[1] = f2fx(1.0f);
-						Points.back().m_aValues[2] = f2fx(1.0f);
-						Points.back().m_aValues[3] = f2fx(1.0f);
-					}
-					else if(KeyFrames[0].GetTime() != 0)
-					{
-						if(Loop)
-						{
-							if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
-							{
-								Points.emplace_back();
-								Points.back().m_Time = 0;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetColor().r);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetColor().g);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetColor().b);
-								Points.back().m_aValues[3] = f2fx(KeyFrames.front().GetColor().a);
-							}
-							else if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
-							{
-								Points.emplace_back();
-								Points.back().m_Time = 0;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetColor().r);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetColor().g);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetColor().b);
-								Points.back().m_aValues[3] = f2fx(KeyFrames.back().GetColor().a);
-								
-								Points.emplace_back();
-								Points.back().m_Time = KeyFrames.front().GetTime()/2;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetColor().r);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetColor().g);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetColor().b);
-								Points.back().m_aValues[3] = f2fx(KeyFrames.front().GetColor().a);
-							}
-							else
-							{
-								Points.emplace_back();
-								Points.back().m_Time = 0;
-								switch(KeyFrames.back().GetGraphType())
-								{
-									case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
-										break;
-									case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
-										Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
-										break;
-								}
-								Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetColor().r);
-								Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetColor().g);
-								Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetColor().b);
-								Points.back().m_aValues[3] = f2fx(KeyFrames.back().GetColor().a);
-							}
-						}
-						else
-						{
-							Points.emplace_back();
-							Points.back().m_Time = 0;
-							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-							Points.back().m_aValues[0] = f2fx(KeyFrames[0].GetColor().r);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[0].GetColor().g);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[0].GetColor().b);
-							Points.back().m_aValues[3] = f2fx(KeyFrames[0].GetColor().a);
-						}
-					}
-					
-					for(unsigned int f=0; f<KeyFrames.size(); f++)
-					{
-						if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
-						{
-							Points.emplace_back();
-							Points.back().m_Time = KeyFrames[f].GetTime();
-							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-							Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetColor().r);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetColor().g);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetColor().b);
-							Points.back().m_aValues[3] = f2fx(KeyFrames[f].GetColor().a);
-							Points.emplace_back();
-							if(f+1 < KeyFrames.size() || Loop)
-							{
-								unsigned int f2 = (f+1)%KeyFrames.size();
-								Points.back().m_Time = KeyFrames[f].GetTime();
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetColor().r);
-								Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetColor().g);
-								Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetColor().b);
-								Points.back().m_aValues[3] = f2fx(KeyFrames[f2].GetColor().a);
-							}
-						}
-						else if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
-						{
-							Points.emplace_back();
-							Points.back().m_Time = KeyFrames[f].GetTime();
-							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-							Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetColor().r);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetColor().g);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetColor().b);
-							Points.back().m_aValues[3] = f2fx(KeyFrames[f].GetColor().a);
-							Points.emplace_back();
-							if(f+1 < KeyFrames.size() || Loop)
-							{
-								unsigned int f2 = (f+1)%KeyFrames.size();
-								int64 Time2 = KeyFrames[f2].GetTime();
-								if(Time2 < KeyFrames[f].GetTime())
-									Time2 += pAnimation->GetLayerAnimation(GlobalLayer).GetDuration();
-								Points.back().m_Time = (KeyFrames[f].GetTime() + Time2)/2;
-								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-								Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetColor().r);
-								Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetColor().g);
-								Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetColor().b);
-								Points.back().m_aValues[3] = f2fx(KeyFrames[f2].GetColor().a);
-							}
-						}
-						else
-						{
-							Points.emplace_back();
-							Points.back().m_Time = KeyFrames[f].GetTime();
-							switch(KeyFrames[f].GetGraphType())
-							{
-								case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
-									break;
-								case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
-									Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
-									break;
-							}
-							Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetColor().r);
-							Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetColor().g);
-							Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetColor().b);
-							Points.back().m_aValues[3] = f2fx(KeyFrames[f].GetColor().a);
-						}
-					}
-					
-					//copy the last frame to simulate a clamping
-					if(KeyFrames.size() && !Loop)
-					{
-						Points.emplace_back();
-						Points.back().m_Time = 0x7FFFFFFF;
-						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-						Points.back().m_aValues[0] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().r);
-						Points.back().m_aValues[1] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().g);
-						Points.back().m_aValues[2] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().b);
-						Points.back().m_aValues[3] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().a);
-					}
-				}
-				else
-				{
-					Points.emplace_back();
-					Points.back().m_Time = 0;
-					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-					Points.back().m_aValues[0] = f2fx(1.0f);
-					Points.back().m_aValues[1] = f2fx(1.0f);
-					Points.back().m_aValues[2] = f2fx(1.0f);
-					Points.back().m_aValues[3] = f2fx(1.0f);
-					Points.emplace_back();
-					Points.back().m_Time = 1000;
-					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
-					Points.back().m_aValues[0] = f2fx(1.0f);
-					Points.back().m_aValues[1] = f2fx(1.0f);
-					Points.back().m_aValues[2] = f2fx(1.0f);
-					Points.back().m_aValues[3] = f2fx(1.0f);
-				}
-			
-				ddnet::CMapItemEnvelope AItem;
-				AItem.m_Version = ddnet::CMapItemEnvelope::CURRENT_VERSION;
-				AItem.m_Channels = 4;
-				AItem.m_StartPoint = OldNumPoints;
-				AItem.m_NumPoints = Points.size() - OldNumPoints;
-				AItem.m_Synchronized = 1;
-				StrToInts(AItem.m_aName, sizeof(AItem.m_aName)/sizeof(int), pAnimation->GetName());
-				ArchiveFile.AddItem(ddnet::MAPITEMTYPE_ENVELOPE, i*2, sizeof(ddnet::CMapItemEnvelope), &AItem);
-			}
-		}
-		
-		if(Points.size())
-		{
-			ArchiveFile.AddItem(ddnet::MAPITEMTYPE_ENVPOINTS, 0, sizeof(ddnet::CEnvPoint)*Points.size(), &Points[0]);
-		}
-		
-	}
-	
+	SaveMapAnimations(&ArchiveFile, Animations);
+
 	ArchiveFile.Finish();
-	
+
 	return true;
+}
+
+void CAssetsManager::SaveMapImages(ddnet::CDataFileWriter *pArchiveFile, int Format, const std::vector<CAssetPath> &Images)
+{
+	for(unsigned int i=0; i<Images.size(); i++)
+	{
+		ddnet::CMapItemImage IItem;
+		IItem.m_Version = 1;
+		IItem.m_Width = 0;
+		IItem.m_Height = 0;
+		IItem.m_External = 1;
+		IItem.m_ImageName = -1;
+		IItem.m_ImageData = -1;
+
+		const CAsset_Image* pImage = GetAsset<CAsset_Image>(Images[i]);
+		if(pImage)
+		{
+			IItem.m_Width = pImage->GetDataWidth();
+			IItem.m_Height = pImage->GetDataHeight();
+
+			if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_clouds") == 0)
+			{
+				if(str_comp(pImage->GetName(), "cloud1") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("bg_cloud1")+1, "bg_cloud1");
+				if(str_comp(pImage->GetName(), "cloud2") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("bg_cloud2")+1, "bg_cloud2");
+				if(str_comp(pImage->GetName(), "cloud3") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("bg_cloud3")+1, "bg_cloud3");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_desert") == 0)
+			{
+				if(str_comp(pImage->GetName(), "desertMain") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("desert_main")+1, "desert_main");
+				if(str_comp(pImage->GetName(), "desertDoodads") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("desert_doodads")+1, "desert_doodads");
+				if(str_comp(pImage->GetName(), "desertMountains1") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("desert_mountains")+1, "desert_mountains");
+				if(str_comp(pImage->GetName(), "desertMountains2") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("desert_mountains2")+1, "desert_mountains2");
+				if(str_comp(pImage->GetName(), "desertSun") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("desert_sun")+1, "desert_sun");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_generic") == 0)
+			{
+				if(str_comp(pImage->GetName(), "genericSpikes") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("generic_deathtiles")+1, "generic_deathtiles");
+				if(str_comp(pImage->GetName(), "genericUnhookable") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("generic_unhookable")+1, "generic_unhookable");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_grass") == 0)
+			{
+				if(str_comp(pImage->GetName(), "grassMain") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("grass_main")+1, "grass_main");
+				if(str_comp(pImage->GetName(), "grassDoodads") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("grass_doodads")+1, "grass_doodads");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_jungle") == 0)
+			{
+				if(str_comp(pImage->GetName(), "jungleMain") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("jungle_main")+1, "jungle_main");
+				if(str_comp(pImage->GetName(), "jungleDoodads") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("jungle_doodads")+1, "jungle_doodads");
+				if(str_comp(pImage->GetName(), "jungleSpikes") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("jungle_deathtiles")+1, "jungle_deathtiles");
+				if(str_comp(pImage->GetName(), "jungleUnhookable") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("jungle_unhookables")+1, "jungle_unhookables");
+				if(str_comp(pImage->GetName(), "jungleBackground") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("jungle_background")+1, "jungle_background");
+				if(str_comp(pImage->GetName(), "jungleMidground") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("jungle_midground")+1, "jungle_midground");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_moon") == 0)
+			{
+				if(str_comp(pImage->GetName(), "moon") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("moon")+1, "moon");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_mountains") == 0)
+			{
+				if(str_comp(pImage->GetName(), "mountains") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("mountains")+1, "mountains");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_snow") == 0)
+			{
+				if(str_comp(pImage->GetName(), "snow") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("snow")+1, "snow");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_stars") == 0)
+			{
+				if(str_comp(pImage->GetName(), "stars") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("stars")+1, "stars");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_sun") == 0)
+			{
+				if(str_comp(pImage->GetName(), "sun") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("sun")+1, "sun");
+			}
+			else if(str_comp(GetPackageName(Images[i].GetPackageId()), "env_winter") == 0)
+			{
+				if(str_comp(pImage->GetName(), "winterMain") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("winter_main")+1, "winter_main");
+				if(str_comp(pImage->GetName(), "winterDoodads") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("winter_doodads")+1, "winter_doodads");
+				if(str_comp(pImage->GetName(), "winterMountains1") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("winter_mountains")+1, "winter_mountains");
+				if(str_comp(pImage->GetName(), "winterMountains2") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("winter_mountains2")+1, "winter_mountains2");
+				if(str_comp(pImage->GetName(), "winterMountains3") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("winter_mountains3")+1, "winter_mountains3");
+			}
+			else if(Format == MAPFORMAT_NINSLASH && str_comp(GetPackageName(Images[i].GetPackageId()), "env_lab") == 0)
+			{
+				if(str_comp(pImage->GetName(), "labMain") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("lab_main")+1, "lab_main");
+				if(str_comp(pImage->GetName(), "labMisc") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("lab")+1, "lab");
+				if(str_comp(pImage->GetName(), "labBackground") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("lab_background")+1, "lab_background");
+			}
+			else if(Format == MAPFORMAT_NINSLASH && str_comp(GetPackageName(Images[i].GetPackageId()), "env_factory") == 0)
+			{
+				if(str_comp(pImage->GetName(), "factoryMain") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("factory_main")+1, "factory_main");
+				if(str_comp(pImage->GetName(), "factoryBackground") == 0)
+					IItem.m_ImageName = pArchiveFile->AddData(str_length("factory_background")+1, "factory_background");
+			}
+
+			if(IItem.m_ImageName == -1)
+			{
+				IItem.m_External = 0;
+				IItem.m_ImageName = pArchiveFile->AddData(str_length(pImage->GetName())+1, pImage->GetName());
+				IItem.m_ImageData = pArchiveFile->AddData(pImage->GetDataArray().get_linear_size(), pImage->GetDataPtr());
+			}
+		}
+
+		pArchiveFile->AddItem(ddnet::MAPITEMTYPE_IMAGE, i, sizeof(IItem), &IItem);
+	}
+}
+
+void CAssetsManager::SaveMapAnimations(ddnet::CDataFileWriter *pArchiveFile, const std::vector<CAssetPath> &Animations)
+{
+	std::vector<ddnet::CEnvPoint> Points;
+	for(unsigned int i=0; i<Animations.size(); i++)
+	{
+		const CAsset_SkeletonAnimation* pAnimation = GetAsset<CAsset_SkeletonAnimation>(Animations[i]);
+
+		//Save position env
+		{
+			unsigned int OldNumPoints = Points.size();
+
+			CSubPath GlobalBone = pAnimation->FindBoneAnim(CSubPath::Null());
+
+			if(GlobalBone.IsNotNull() && pAnimation->IsValidBoneAnimation(GlobalBone))
+			{
+				bool Loop = (pAnimation->GetBoneAnimationCycleType(GlobalBone) == CAsset_SkeletonAnimation::CYCLETYPE_LOOP);
+
+				const std::vector<CAsset_SkeletonAnimation::CBoneAnimation::CKeyFrame>& KeyFrames = pAnimation->GetBoneAnimationKeyFrameArray(GlobalBone);
+
+				if(!KeyFrames.size())
+				{
+					Points.emplace_back();
+					Points.back().m_Time = 0;
+					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+					Points.back().m_aValues[0] = f2fx(0.0f);
+					Points.back().m_aValues[1] = f2fx(0.0f);
+					Points.back().m_aValues[2] = f2fx(0.0f);
+					Points.back().m_aValues[3] = f2fx(0.0f);
+					
+					Points.emplace_back();
+					Points.back().m_Time = 1000;
+					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+					Points.back().m_aValues[0] = f2fx(0.0f);
+					Points.back().m_aValues[1] = f2fx(0.0f);
+					Points.back().m_aValues[2] = f2fx(0.0f);
+					Points.back().m_aValues[3] = f2fx(0.0f);
+				}
+				else if(KeyFrames[0].GetTime() != 0)
+				{
+					if(Loop)
+					{
+						if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
+						{
+							Points.emplace_back();
+							Points.back().m_Time = 0;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetTranslation().x);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetTranslation().y);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetAngle()*180.0f/Pi);
+							Points.back().m_aValues[3] = f2fx(0.0f);
+						}
+						else if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
+						{
+							Points.emplace_back();
+							Points.back().m_Time = 0;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetTranslation().x);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetTranslation().y);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetAngle());
+							Points.back().m_aValues[3] = f2fx(0.0f);
+
+							Points.emplace_back();
+							Points.back().m_Time = KeyFrames.front().GetTime()/2;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetTranslation().x);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetTranslation().y);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetAngle()*180.0f/Pi);
+							Points.back().m_aValues[3] = f2fx(0.0f);
+						}
+						else
+						{
+							Points.emplace_back();
+							Points.back().m_Time = 0;
+							switch(KeyFrames.back().GetGraphType())
+							{
+								case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
+									break;
+							}
+							Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetTranslation().x);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetTranslation().y);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetAngle()*180.0f/Pi);
+							Points.back().m_aValues[3] = f2fx(0.0f);
+						}
+					}
+					else
+					{
+						Points.emplace_back();
+						Points.back().m_Time = 0;
+						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+						Points.back().m_aValues[0] = f2fx(KeyFrames[0].GetTranslation().x);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[0].GetTranslation().y);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[0].GetAngle()*180.0f/Pi);
+						Points.back().m_aValues[3] = f2fx(0.0f);
+					}
+				}
+
+				for(unsigned int f=0; f<KeyFrames.size(); f++)
+				{
+					if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
+					{
+						Points.emplace_back();
+						Points.back().m_Time = KeyFrames[f].GetTime();
+						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+						Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetTranslation().x);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetTranslation().y);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetAngle());
+						Points.back().m_aValues[3] = f2fx(0.0f);
+						Points.emplace_back();
+						if(f+1 < KeyFrames.size() || Loop)
+						{
+							unsigned int f2 = (f+1)%KeyFrames.size();
+							Points.back().m_Time = KeyFrames[f].GetTime();
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetTranslation().x);
+							Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetTranslation().y);
+							Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetAngle()*180.0f/Pi);
+							Points.back().m_aValues[3] = f2fx(0.0f);
+						}
+					}
+					else if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
+					{
+						Points.emplace_back();
+						Points.back().m_Time = KeyFrames[f].GetTime();
+						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+						Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetTranslation().x);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetTranslation().y);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetAngle());
+						Points.back().m_aValues[3] = f2fx(0.0f);
+						Points.emplace_back();
+						if(f+1 < KeyFrames.size() || Loop)
+						{
+							unsigned int f2 = (f+1)%KeyFrames.size();
+							int64 Time2 = KeyFrames[f2].GetTime();
+							if(Time2 < KeyFrames[f].GetTime())
+								Time2 += pAnimation->GetBoneAnimation(GlobalBone).GetDuration();
+							Points.back().m_Time = (KeyFrames[f].GetTime() + Time2)/2;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetTranslation().x);
+							Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetTranslation().y);
+							Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetAngle()*180.0f/Pi);
+							Points.back().m_aValues[3] = f2fx(0.0f);
+						}
+					}
+					else
+					{
+						Points.emplace_back();
+						Points.back().m_Time = KeyFrames[f].GetTime();
+						switch(KeyFrames[f].GetGraphType())
+						{
+							case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
+								break;
+						}
+						Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetTranslation().x);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetTranslation().y);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetAngle()*180.0f/Pi);
+						Points.back().m_aValues[3] = f2fx(0.0f);
+					}
+				}
+
+				//copy the last frame to simulate a clamping
+				if(KeyFrames.size() && !Loop)
+				{
+					Points.emplace_back();
+					Points.back().m_Time = 0x7FFFFFFF;
+					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+					Points.back().m_aValues[0] = f2fx(KeyFrames[KeyFrames.size()-1].GetTranslation().x);
+					Points.back().m_aValues[1] = f2fx(KeyFrames[KeyFrames.size()-1].GetTranslation().y);
+					Points.back().m_aValues[2] = f2fx(KeyFrames[KeyFrames.size()-1].GetAngle()*180.0f/Pi);
+					Points.back().m_aValues[3] = f2fx(0.0f);
+				}
+			}
+			else
+			{
+				Points.emplace_back();
+				Points.back().m_Time = 0;
+				Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+				Points.back().m_aValues[0] = f2fx(0.0f);
+				Points.back().m_aValues[1] = f2fx(0.0f);
+				Points.back().m_aValues[2] = f2fx(0.0f);
+				Points.back().m_aValues[3] = f2fx(0.0f);
+
+				Points.emplace_back();
+				Points.back().m_Time = 1000;
+				Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+				Points.back().m_aValues[0] = f2fx(0.0f);
+				Points.back().m_aValues[1] = f2fx(0.0f);
+				Points.back().m_aValues[2] = f2fx(0.0f);
+				Points.back().m_aValues[3] = f2fx(0.0f);
+			}
+
+			ddnet::CMapItemEnvelope AItem;
+			AItem.m_Version = ddnet::CMapItemEnvelope::CURRENT_VERSION;
+			AItem.m_Channels = 3;
+			AItem.m_StartPoint = OldNumPoints;
+			AItem.m_NumPoints = Points.size() - OldNumPoints;
+			AItem.m_Synchronized = 1;
+			StrToInts(AItem.m_aName, sizeof(AItem.m_aName)/sizeof(int), pAnimation->GetName());
+			pArchiveFile->AddItem(ddnet::MAPITEMTYPE_ENVELOPE, i*2, sizeof(ddnet::CMapItemEnvelope), &AItem);
+		}
+
+		//Save color env
+		{
+			unsigned int OldNumPoints = Points.size();
+
+			CSubPath GlobalLayer = pAnimation->FindLayerAnim(CSubPath::Null());
+
+			if(GlobalLayer.IsNotNull() && pAnimation->IsValidLayerAnimation(GlobalLayer))
+			{
+				bool Loop = (pAnimation->GetLayerAnimationCycleType(GlobalLayer) == CAsset_SkeletonAnimation::CYCLETYPE_LOOP);
+
+				const std::vector<CAsset_SkeletonAnimation::CLayerAnimation::CKeyFrame>& KeyFrames = pAnimation->GetLayerAnimationKeyFrameArray(GlobalLayer);
+
+				if(!KeyFrames.size())
+				{
+					Points.emplace_back();
+					Points.back().m_Time = 0;
+					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+					Points.back().m_aValues[0] = f2fx(1.0f);
+					Points.back().m_aValues[1] = f2fx(1.0f);
+					Points.back().m_aValues[2] = f2fx(1.0f);
+					Points.back().m_aValues[3] = f2fx(1.0f);
+					Points.emplace_back();
+					Points.back().m_Time = 1000;
+					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+					Points.back().m_aValues[0] = f2fx(1.0f);
+					Points.back().m_aValues[1] = f2fx(1.0f);
+					Points.back().m_aValues[2] = f2fx(1.0f);
+					Points.back().m_aValues[3] = f2fx(1.0f);
+				}
+				else if(KeyFrames[0].GetTime() != 0)
+				{
+					if(Loop)
+					{
+						if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
+						{
+							Points.emplace_back();
+							Points.back().m_Time = 0;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetColor().r);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetColor().g);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetColor().b);
+							Points.back().m_aValues[3] = f2fx(KeyFrames.front().GetColor().a);
+						}
+						else if(KeyFrames.back().GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
+						{
+							Points.emplace_back();
+							Points.back().m_Time = 0;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetColor().r);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetColor().g);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetColor().b);
+							Points.back().m_aValues[3] = f2fx(KeyFrames.back().GetColor().a);
+
+							Points.emplace_back();
+							Points.back().m_Time = KeyFrames.front().GetTime()/2;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames.front().GetColor().r);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.front().GetColor().g);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.front().GetColor().b);
+							Points.back().m_aValues[3] = f2fx(KeyFrames.front().GetColor().a);
+						}
+						else
+						{
+							Points.emplace_back();
+							Points.back().m_Time = 0;
+							switch(KeyFrames.back().GetGraphType())
+							{
+								case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
+									break;
+								case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
+									Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
+									break;
+							}
+							Points.back().m_aValues[0] = f2fx(KeyFrames.back().GetColor().r);
+							Points.back().m_aValues[1] = f2fx(KeyFrames.back().GetColor().g);
+							Points.back().m_aValues[2] = f2fx(KeyFrames.back().GetColor().b);
+							Points.back().m_aValues[3] = f2fx(KeyFrames.back().GetColor().a);
+						}
+					}
+					else
+					{
+						Points.emplace_back();
+						Points.back().m_Time = 0;
+						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+						Points.back().m_aValues[0] = f2fx(KeyFrames[0].GetColor().r);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[0].GetColor().g);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[0].GetColor().b);
+						Points.back().m_aValues[3] = f2fx(KeyFrames[0].GetColor().a);
+					}
+				}
+
+				for(unsigned int f=0; f<KeyFrames.size(); f++)
+				{
+					if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPSTART)
+					{
+						Points.emplace_back();
+						Points.back().m_Time = KeyFrames[f].GetTime();
+						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+						Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetColor().r);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetColor().g);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetColor().b);
+						Points.back().m_aValues[3] = f2fx(KeyFrames[f].GetColor().a);
+						Points.emplace_back();
+						if(f+1 < KeyFrames.size() || Loop)
+						{
+							unsigned int f2 = (f+1)%KeyFrames.size();
+							Points.back().m_Time = KeyFrames[f].GetTime();
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetColor().r);
+							Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetColor().g);
+							Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetColor().b);
+							Points.back().m_aValues[3] = f2fx(KeyFrames[f2].GetColor().a);
+						}
+					}
+					else if(KeyFrames[f].GetGraphType() == CAsset_SkeletonAnimation::GRAPHTYPE_STEPMIDDLE)
+					{
+						Points.emplace_back();
+						Points.back().m_Time = KeyFrames[f].GetTime();
+						Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+						Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetColor().r);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetColor().g);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetColor().b);
+						Points.back().m_aValues[3] = f2fx(KeyFrames[f].GetColor().a);
+						Points.emplace_back();
+						if(f+1 < KeyFrames.size() || Loop)
+						{
+							unsigned int f2 = (f+1)%KeyFrames.size();
+							int64 Time2 = KeyFrames[f2].GetTime();
+							if(Time2 < KeyFrames[f].GetTime())
+								Time2 += pAnimation->GetLayerAnimation(GlobalLayer).GetDuration();
+							Points.back().m_Time = (KeyFrames[f].GetTime() + Time2)/2;
+							Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+							Points.back().m_aValues[0] = f2fx(KeyFrames[f2].GetColor().r);
+							Points.back().m_aValues[1] = f2fx(KeyFrames[f2].GetColor().g);
+							Points.back().m_aValues[2] = f2fx(KeyFrames[f2].GetColor().b);
+							Points.back().m_aValues[3] = f2fx(KeyFrames[f2].GetColor().a);
+						}
+					}
+					else
+					{
+						Points.emplace_back();
+						Points.back().m_Time = KeyFrames[f].GetTime();
+						switch(KeyFrames[f].GetGraphType())
+						{
+							case CAsset_SkeletonAnimation::GRAPHTYPE_STEPEND:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_LINEAR:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_LINEAR;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_ACCELERATION:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_SLOW;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_DECELERATION:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_FAST;
+								break;
+							case CAsset_SkeletonAnimation::GRAPHTYPE_SMOOTH:
+								Points.back().m_Curvetype = ddnet::CURVETYPE_SMOOTH;
+								break;
+						}
+						Points.back().m_aValues[0] = f2fx(KeyFrames[f].GetColor().r);
+						Points.back().m_aValues[1] = f2fx(KeyFrames[f].GetColor().g);
+						Points.back().m_aValues[2] = f2fx(KeyFrames[f].GetColor().b);
+						Points.back().m_aValues[3] = f2fx(KeyFrames[f].GetColor().a);
+					}
+				}
+
+				//copy the last frame to simulate a clamping
+				if(KeyFrames.size() && !Loop)
+				{
+					Points.emplace_back();
+					Points.back().m_Time = 0x7FFFFFFF;
+					Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+					Points.back().m_aValues[0] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().r);
+					Points.back().m_aValues[1] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().g);
+					Points.back().m_aValues[2] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().b);
+					Points.back().m_aValues[3] = f2fx(KeyFrames[KeyFrames.size()-1].GetColor().a);
+				}
+			}
+			else
+			{
+				Points.emplace_back();
+				Points.back().m_Time = 0;
+				Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+				Points.back().m_aValues[0] = f2fx(1.0f);
+				Points.back().m_aValues[1] = f2fx(1.0f);
+				Points.back().m_aValues[2] = f2fx(1.0f);
+				Points.back().m_aValues[3] = f2fx(1.0f);
+				Points.emplace_back();
+				Points.back().m_Time = 1000;
+				Points.back().m_Curvetype = ddnet::CURVETYPE_STEP;
+				Points.back().m_aValues[0] = f2fx(1.0f);
+				Points.back().m_aValues[1] = f2fx(1.0f);
+				Points.back().m_aValues[2] = f2fx(1.0f);
+				Points.back().m_aValues[3] = f2fx(1.0f);
+			}
+
+			ddnet::CMapItemEnvelope AItem;
+			AItem.m_Version = ddnet::CMapItemEnvelope::CURRENT_VERSION;
+			AItem.m_Channels = 4;
+			AItem.m_StartPoint = OldNumPoints;
+			AItem.m_NumPoints = Points.size() - OldNumPoints;
+			AItem.m_Synchronized = 1;
+			StrToInts(AItem.m_aName, sizeof(AItem.m_aName)/sizeof(int), pAnimation->GetName());
+			pArchiveFile->AddItem(ddnet::MAPITEMTYPE_ENVELOPE, i*2, sizeof(ddnet::CMapItemEnvelope), &AItem);
+		}
+	}
+
+	if(Points.size())
+	{
+		pArchiveFile->AddItem(ddnet::MAPITEMTYPE_ENVPOINTS, 0, sizeof(ddnet::CEnvPoint)*Points.size(), &Points[0]);
+	}
 }

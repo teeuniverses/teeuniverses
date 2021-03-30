@@ -225,7 +225,6 @@ void CCursorTool_MapVertexEditor::OnViewButtonClick_Objects_Impl(int Button)
 	
 	if(m_DragType == 0)
 	{
-		vec2 MousePos = vec2(Context()->GetMousePos().x, Context()->GetMousePos().y);
 		vec2 NewVertexPos;
 		CSubPath PrevVertexPath;
 		CSubPath NextVertexPath;
@@ -260,6 +259,94 @@ void CCursorTool_MapVertexEditor::OnViewButtonClick_Objects_Impl(int Button)
 	ViewMap()->MapRenderer()->UnsetGroup();
 }
 
+void CCursorTool_MapVertexEditor::OnViewButtonClick_Quads_Impl(int Button)
+{
+	const CAsset_MapLayerQuads* pMapLayer = AssetsManager()->GetAsset<CAsset_MapLayerQuads>(AssetsEditor()->GetEditedAssetPath());
+	if(!pMapLayer)
+		return;
+	
+	ViewMap()->MapRenderer()->SetGroup(ViewMap()->GetMapGroupPath());
+	
+	//Find gizmo
+	float GizmoSize = 16.0f;
+	vec2 CursorPos = vec2(Context()->GetMousePos().x, Context()->GetMousePos().y);
+
+	CSubPath SelectedQuad = AssetsEditor()->GetFirstEditedSubPath();
+	if(SelectedQuad.GetType() == CAsset_MapLayerQuads::TYPE_QUAD && pMapLayer->IsValidQuad(SelectedQuad))
+	{
+		vec2 Position;
+		matrix2x2 Transform;
+		pMapLayer->GetQuadTransform(SelectedQuad, ViewMap()->MapRenderer()->GetTime(), &Transform, &Position);
+		
+		vec2 PivotPos = ViewMap()->MapRenderer()->MapPosToScreenPos(Transform*vec2(0.0f, 0.0f) + Position);
+		if(length(CursorPos - PivotPos) < GizmoSize*(12.0f/16.0f))
+		{
+			m_ClickDiff = CursorPos - PivotPos;
+			m_Vertex = CAsset_MapLayerQuads::VERTEX_PIVOT;
+			
+			m_Token = AssetsManager()->GenerateToken();
+			
+			return;
+		}
+		else
+		{
+			for(int p=3; p>=0; p--)
+			{
+				vec2 VertexPos;
+				int VertexId = CAsset_MapLayerQuads::VERTEX0+p;
+				
+				switch(p)
+				{
+					case 0:
+						VertexPos = pMapLayer->GetQuadVertex0(SelectedQuad);
+						break;
+					case 1:
+						VertexPos = pMapLayer->GetQuadVertex1(SelectedQuad);
+						break;
+					case 2:
+						VertexPos = pMapLayer->GetQuadVertex2(SelectedQuad);
+						break;
+					case 3:
+						VertexPos = pMapLayer->GetQuadVertex3(SelectedQuad);
+						break;
+				}
+				
+				vec2 VertexScreenPos = ViewMap()->MapRenderer()->MapPosToScreenPos(Transform*VertexPos + Position);
+				if(length(CursorPos - VertexScreenPos) < GizmoSize*(12.0f/16.0f))
+				{
+					m_ClickDiff = CursorPos - VertexScreenPos;
+					m_Vertex = VertexId;
+						
+					m_Token = AssetsManager()->GenerateToken();
+					
+					SelectedQuad.SetId2(m_Vertex);
+					AssetsEditor()->SetEditedAsset(AssetsEditor()->GetEditedAssetPath(), SelectedQuad);
+					return;
+				}
+			}
+		}
+	}
+	
+	CSubPath QuadFound = Pick(CursorPos);
+		
+	if(!QuadFound.IsNull())
+	{
+		if(SelectedQuad != QuadFound)
+		{
+			SelectedQuad = QuadFound;
+			m_Token = AssetsManager()->GenerateToken();
+		}
+		
+		AssetsEditor()->SetEditedAsset(AssetsEditor()->GetEditedAssetPath(), SelectedQuad);
+	}
+	else
+	{
+		AssetsEditor()->SetEditedAsset(AssetsEditor()->GetEditedAssetPath(), CSubPath::Null());
+	}
+	
+	ViewMap()->MapRenderer()->UnsetGroup();
+}
+
 void CCursorTool_MapVertexEditor::OnViewButtonClick(int Button)
 {
 	if(!ViewMap()->GetViewRect().IsInside(Context()->GetMousePos()))
@@ -269,92 +356,7 @@ void CCursorTool_MapVertexEditor::OnViewButtonClick(int Button)
 		return;
 	
 	if(AssetsEditor()->GetEditedAssetPath().GetType() == CAsset_MapLayerQuads::TypeId)
-	{
-		const CAsset_MapLayerQuads* pMapLayer = AssetsManager()->GetAsset<CAsset_MapLayerQuads>(AssetsEditor()->GetEditedAssetPath());
-		if(!pMapLayer)
-			return;
-		
-		ViewMap()->MapRenderer()->SetGroup(ViewMap()->GetMapGroupPath());
-		
-		//Find gizmo
-		float GizmoSize = 16.0f;
-		vec2 CursorPos = vec2(Context()->GetMousePos().x, Context()->GetMousePos().y);
-
-		CSubPath SelectedQuad = AssetsEditor()->GetFirstEditedSubPath();
-		if(SelectedQuad.GetType() == CAsset_MapLayerQuads::TYPE_QUAD && pMapLayer->IsValidQuad(SelectedQuad))
-		{
-			vec2 Position;
-			matrix2x2 Transform;
-			pMapLayer->GetQuadTransform(SelectedQuad, ViewMap()->MapRenderer()->GetTime(), &Transform, &Position);
-			
-			vec2 PivotPos = ViewMap()->MapRenderer()->MapPosToScreenPos(Transform*vec2(0.0f, 0.0f) + Position);
-			if(length(CursorPos - PivotPos) < GizmoSize*(12.0f/16.0f))
-			{
-				m_ClickDiff = CursorPos - PivotPos;
-				m_Vertex = CAsset_MapLayerQuads::VERTEX_PIVOT;
-				
-				m_Token = AssetsManager()->GenerateToken();
-				
-				return;
-			}
-			else
-			{
-				for(int p=3; p>=0; p--)
-				{
-					vec2 VertexPos;
-					int VertexId = CAsset_MapLayerQuads::VERTEX0+p;
-					
-					switch(p)
-					{
-						case 0:
-							VertexPos = pMapLayer->GetQuadVertex0(SelectedQuad);
-							break;
-						case 1:
-							VertexPos = pMapLayer->GetQuadVertex1(SelectedQuad);
-							break;
-						case 2:
-							VertexPos = pMapLayer->GetQuadVertex2(SelectedQuad);
-							break;
-						case 3:
-							VertexPos = pMapLayer->GetQuadVertex3(SelectedQuad);
-							break;
-					}
-					
-					vec2 VertexScreenPos = ViewMap()->MapRenderer()->MapPosToScreenPos(Transform*VertexPos + Position);
-					if(length(CursorPos - VertexScreenPos) < GizmoSize*(12.0f/16.0f))
-					{
-						m_ClickDiff = CursorPos - VertexScreenPos;
-						m_Vertex = VertexId;
-							
-						m_Token = AssetsManager()->GenerateToken();
-						
-						SelectedQuad.SetId2(m_Vertex);
-						AssetsEditor()->SetEditedAsset(AssetsEditor()->GetEditedAssetPath(), SelectedQuad);
-						return;
-					}
-				}
-			}
-		}
-		
-		CSubPath QuadFound = Pick(CursorPos);
-			
-		if(!QuadFound.IsNull())
-		{
-			if(SelectedQuad != QuadFound)
-			{
-				SelectedQuad = QuadFound;
-				m_Token = AssetsManager()->GenerateToken();
-			}
-			
-			AssetsEditor()->SetEditedAsset(AssetsEditor()->GetEditedAssetPath(), SelectedQuad);
-		}
-		else
-		{
-			AssetsEditor()->SetEditedAsset(AssetsEditor()->GetEditedAssetPath(), CSubPath::Null());
-		}
-		
-		ViewMap()->MapRenderer()->UnsetGroup();
-	}
+		OnViewButtonClick_Quads_Impl(Button);
 	else if(AssetsEditor()->GetEditedAssetPath().GetType() == CAsset_MapLayerObjects::TypeId)
 		OnViewButtonClick_Objects_Impl<CAsset_MapLayerObjects>(Button);
 	else if(AssetsEditor()->GetEditedAssetPath().GetType() == CAsset_MapZoneObjects::TypeId)
@@ -432,21 +434,20 @@ void CCursorTool_MapVertexEditor::OnViewMouseMove()
 		if(SelectedQuad.GetType() != CAsset_MapLayerQuads::TYPE_QUAD || !pMapLayer->IsValidQuad(SelectedQuad))
 			return;
 		
+		const typename CAsset_MapLayerQuads::CQuad& Object = pMapLayer->GetQuad(CAsset_MapLayerQuads::SubPath_Quad(m_CurrentVertex.GetId()));
+		vec2 Position;
+		matrix2x2 Transform;
+		Object.GetTransform(AssetsManager(), ViewMap()->MapRenderer()->GetTime(), &Transform, &Position);
+		matrix2x2 InvTransform = matrix2x2::inverse(Transform);
+		
 		ViewMap()->MapRenderer()->SetGroup(ViewMap()->GetMapGroupPath());
 		
 		vec2 CursorPos = vec2(Context()->GetMousePos().x, Context()->GetMousePos().y);
 		vec2 CursorMapPos = ViewMap()->MapRenderer()->ScreenPosToMapPos(CursorPos - m_ClickDiff);
-		
 		if(ViewMap()->GetGridAlign())
 		{
-			CursorMapPos = ViewMap()->MapRenderer()->MapPosToTilePos(CursorMapPos);
-			CursorMapPos = ViewMap()->MapRenderer()->TilePosToMapPos(vec2(floor(CursorMapPos.x), floor(CursorMapPos.y)));
+			CursorMapPos = ViewMap()->MapRenderer()->RoundMapPosToTile(CursorMapPos);
 		}
-		
-		vec2 Position;
-		matrix2x2 Transform;
-		pMapLayer->GetQuadTransform(SelectedQuad, ViewMap()->MapRenderer()->GetTime(), &Transform, &Position);
-		matrix2x2 InvTransform = matrix2x2::inverse(Transform);
 		
 		int Members[] = {
 			CAsset_MapLayerQuads::QUAD_VERTEX0,
@@ -464,7 +465,7 @@ void CCursorTool_MapVertexEditor::OnViewMouseMove()
 		else if(m_Vertex == CAsset_MapLayerQuads::VERTEX_PIVOT)
 		{
 			vec2 Diff = InvTransform*(CursorMapPos - Position);
-			vec2 NewPivot = pMapLayer->GetQuadPivot(SelectedQuad) + CursorMapPos - Position;
+			vec2 NewPivot = Object.GetPivot() + CursorMapPos - Position;
 			
 			AssetsManager()->SetAssetValue<vec2>(AssetsEditor()->GetEditedAssetPath(), SelectedQuad, CAsset_MapLayerQuads::QUAD_PIVOT, NewPivot, m_Token);
 			
@@ -598,10 +599,10 @@ void CCursorTool_MapVertexEditor::RenderView_Objects_Impl()
 		}
 	}
 }
-	
+
 void CCursorTool_MapVertexEditor::RenderView()
 {
-	ViewMap()->MapRenderer()->SetGroup(ViewMap()->GetMapGroupPath());
+	CViewMap::ScopedGroupSetter GroupSetter(ViewMap());
 	
 	if(AssetsEditor()->GetEditedAssetPath().GetType() == CAsset_MapLayerQuads::TypeId)
 	{
@@ -665,8 +666,6 @@ void CCursorTool_MapVertexEditor::RenderView()
 		RenderView_Objects_Impl<CAsset_MapLayerObjects>();
 	else if(AssetsEditor()->GetEditedAssetPath().GetType() == CAsset_MapZoneObjects::TypeId)
 		RenderView_Objects_Impl<CAsset_MapZoneObjects>();
-	
-	ViewMap()->MapRenderer()->UnsetGroup();
 }
 	
 void CCursorTool_MapVertexEditor::Update(bool ParentEnabled)

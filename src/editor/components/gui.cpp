@@ -921,6 +921,7 @@ COpenSavePackageDialog::COpenSavePackageDialog(CGuiEditor* pAssetsEditor, int Mo
 		gui::CComboBox* pComboBox = new COpenSavePackageDialog_FormatComboBox(Context(), &m_pAssetsEditor->m_Cfg_DefaultCompatibilityMode);
 		pComboBox->Add(_LSTRING("TeeWorlds"), m_pAssetsEditor->m_Path_Sprite_IconMap);
 		pComboBox->Add(_LSTRING("DDNet"), m_pAssetsEditor->m_Path_Sprite_IconMap);
+		pComboBox->Add(_LSTRING("InfClass"), m_pAssetsEditor->m_Path_Sprite_IconMap);
 		pComboBox->Add(_LSTRING("OpenFNG / FNG2"), m_pAssetsEditor->m_Path_Sprite_IconMap);
 		pComboBox->Add(_LSTRING("Ninslash"), m_pAssetsEditor->m_Path_Sprite_IconMap);
 		pComboBox->Add(_LSTRING("DummyCapture"), m_pAssetsEditor->m_Path_Sprite_IconMap);
@@ -2158,6 +2159,8 @@ CGuiEditor::CGuiEditor(CEditorKernel* pEditorKernel) :
 	m_TimePaused(true),
 	m_Time(0),
 	m_TimeSpeed(1),
+	m_NeedRefreshPackageTree(false),
+	m_NeedRefreshAssetsTree(false),
 	m_pAssetsTree(NULL),
 	m_pPackagesTree(NULL),
 	m_pHintLabel(NULL),
@@ -2297,6 +2300,17 @@ bool CGuiEditor::PostUpdate()
 	
 	ResetBindCalls();
 	
+	if (m_NeedRefreshPackageTree)
+	{
+		RefreshPackageTree();
+		m_NeedRefreshPackageTree = false;
+	}
+	if (m_NeedRefreshAssetsTree)
+	{
+		RefreshAssetsTree();
+		m_NeedRefreshAssetsTree = false;
+	}
+
 	return true;
 }
 
@@ -2369,8 +2383,8 @@ void CGuiEditor::LoadAssets()
 		m_Path_Sprite_IconPrevFrame = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconPrevFrame");
 		m_Path_Sprite_IconPlay = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconPlay");
 		m_Path_Sprite_IconPause = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconPause");
-		m_Path_Sprite_IconNextFrame = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconNextFram");
-		m_Path_Sprite_IconLastFrame = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconLastFrame");		
+		m_Path_Sprite_IconNextFrame = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconNextFrame");
+		m_Path_Sprite_IconLastFrame = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconLastFrame");
 		m_Path_Sprite_IconAsset = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconAsset");
 		m_Path_Sprite_IconNewAsset = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconNewAsset");
 		m_Path_Sprite_IconImage = AssetsManager()->FindAsset<CAsset_Sprite>(PackageId, "iconImage");
@@ -2702,6 +2716,16 @@ void CGuiEditor::RemoveEditedSubPath(const CSubPath& SubPath)
 		else
 			Iter++;
 	}
+}
+
+void CGuiEditor::QueuePackageTreeRefresh()
+{
+	m_NeedRefreshPackageTree = true;
+}
+
+void CGuiEditor::QueueAssetsTreeRefresh()
+{
+	m_NeedRefreshAssetsTree = true;
 }
 
 void CGuiEditor::RefreshPackageTree()

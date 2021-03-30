@@ -61,6 +61,9 @@ private:
 	bool m_TimePaused;
 	int64 m_Time;
 	float m_TimeSpeed;
+
+	bool m_NeedRefreshPackageTree;
+	bool m_NeedRefreshAssetsTree;
 	
 public:
 	class CAssetsTree* m_pAssetsTree;
@@ -339,6 +342,9 @@ public:
 	inline bool GetTimePaused() const { return m_TimePaused; }
 	inline void SetTimePaused(bool TimePaused) { m_TimePaused = TimePaused; }
 		
+	void QueuePackageTreeRefresh();
+	void QueueAssetsTreeRefresh();
+
 	void RefreshPackageTree();
 	void RefreshAssetsTree();
 	
@@ -362,7 +368,21 @@ public:
 	inline gui::CVListLayout* List() { return m_pList; }
 };
 
+class CMenuButton : public gui::CButton
+{
+protected:
+	CGuiEditor* m_pAssetsEditor;
+	CContextMenu* m_pContextMenu;
 
+public:
+	CMenuButton(CGuiEditor* pAssetsEditor, CContextMenu* pContextMenu, const CLocalizableString& Name, const CAssetPath& IconPath) :
+		gui::CButton(pAssetsEditor, Name, IconPath),
+		m_pAssetsEditor(pAssetsEditor),
+		m_pContextMenu(pContextMenu)
+	{
+		SetButtonStyle(m_pAssetsEditor->m_Path_Button_Menu);
+	}
+};
 
 class COpenSavePackageDialog : public gui::CPopup
 {
